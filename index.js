@@ -1,6 +1,7 @@
 const { ApolloServer, gql } = require('apollo-server');
 const Author = require('./models/author');
 const Book = require('./models/book');
+const mongoose = require('mongoose');
 
 mongoose.set('useFindAndModify', false);
 mongoose.set('useCreateIndex', true);
@@ -24,8 +25,8 @@ mongoose
 const typeDefs = gql`
   type Book {
     title: String!
-    author: String!
     published: Int!
+    author: Author!
     genres: [String!]!
     id: ID!
   }
@@ -36,6 +37,7 @@ const typeDefs = gql`
     bookCount: Int!
     id: ID!
   }
+
   type Query {
     authorCount: Int!
     bookCount: Int!
@@ -60,23 +62,25 @@ const resolvers = {
     bookCount: () => Book.collection.countDocuments(),
     allBooks: (root, args) => {
       if (!args.author && !args.genre) {
-        return Book.find({});
-      } else if (args.author && args.genre) {
-        /* */
+        return Book.find({}).populate('author');
+      } /* parameters with author doesnt work*/ else if (
+        args.author &&
+        args.genre
+      ) {
         return books
           .filter((book) => book.author === args.author)
           .filter((book) => book.genres.includes(args.genre));
       } else if (args.author) {
         return books.filter((book) => book.author === args.author);
-      }
-      return books.filter((book) => book.genres.includes(args.genre));
-      /* */
+      } /* */
+      return Book.find({ genres: { $in: args.genre } });
+      //return books.filter((book) => book.genres.includes(args.genre));
     },
     allAuthors: () => Author.find({}),
   },
   Author: {
     bookCount: (root) => {
-      /* */
+      /* */ /*untouched */
       const bookCount = books.reduce(
         (acc, cur) => (acc += cur.author === root.name ? 1 : 0),
         0
@@ -86,28 +90,35 @@ const resolvers = {
     },
   },
   Mutation: {
-    addBook: async (root, args) => {
-      const book = new Book({ ...args });
+    addBook: async (root, { title, author, genres, published }) => {
+      /* Issue with how author interacts with this */
 
-      const existingAuthor = Author.findOne({ name: args.name });
+      let authorid = await Author.findOne({ name: author });
+      const existingAuthor = await Author.findOne({ name: author });
       if (!existingAuthor) {
-        const author = { name: args.author, books: [args.title] };
-        await author.save();
+        const newAuthor = new Author({ name: author });
+        authorid = await newAuthor.save();
       }
+
+      const book = new Book({
+        title: title,
+        author: authorid._id,
+        genres: [...genres],
+        published: published,
+      });
+
       await book.save();
       return book;
-    },
-    editAuthor: (root, args) => {
       /* */
-      const author = authors.find((a) => a.name === args.name);
+    },
+    editAuthor: async (root, args) => {
+      const author = await Author.findOne({ name: args.name });
       if (!author) {
         return null;
       }
-
-      const updatedAuthor = { ...author, born: args.setBornTo };
-      authors = authors.map((a) => (a.name === args.name ? updatedAuthor : a));
-      return updatedAuthor;
-      /* */
+      author.born = args.setBornTo;
+      await author.save();
+      return author;
     },
   },
 };
