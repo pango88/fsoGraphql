@@ -1,4 +1,6 @@
 const { ApolloServer, gql } = require('apollo-server');
+const Author = require('./models/author');
+const Book = require('./models/book');
 const { v1: uuid } = require('uuid');
 
 let authors = [
