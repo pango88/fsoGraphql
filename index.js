@@ -1,4 +1,4 @@
-const { ApolloServer, gql } = require('apollo-server');
+const { ApolloServer, gql, UserInputError } = require('apollo-server');
 const Author = require('./models/author');
 const Book = require('./models/book');
 const mongoose = require('mongoose');
@@ -64,14 +64,22 @@ const resolvers = {
       if (!args.author && !args.genre) {
         return Book.find({}).populate('author');
       } else if (args.author && args.genre) {
-        const author = await Author.findOne({ name: args.author });
-        return Book.find({
-          author: { $in: author._id },
-          genres: { $in: args.genre },
-        }).populate('author');
+        try {
+          author = await Author.findOne({ name: args.author });
+          return Book.find({
+            author: { $in: author._id },
+            genres: { $in: args.genre },
+          }).populate('author');
+        } catch (error) {
+          throw new UserInputError(error.message, { invalidArgs: args });
+        }
       } else if (args.author) {
-        const author = await Author.findOne({ name: args.author });
-        return Book.find({ author: { $in: author._id } }).populate('author');
+        try {
+          const author = await Author.findOne({ name: args.author });
+          return Book.find({ author: { $in: author._id } }).populate('author');
+        } catch (error) {
+          throw new UserInputError(error.message, { invalidArgs: args });
+        }
       }
       return Book.find({ genres: { $in: args.genre } }).populate('author');
     },
@@ -88,8 +96,12 @@ const resolvers = {
       let authorid = await Author.findOne({ name: author });
       const existingAuthor = await Author.findOne({ name: author });
       if (!existingAuthor) {
-        const newAuthor = new Author({ name: author });
-        authorid = await newAuthor.save();
+        try {
+          const newAuthor = new Author({ name: author });
+          authorid = await newAuthor.save();
+        } catch (error) {
+          throw new UserInputError(error.message, { invalidArgs: author });
+        }
       }
 
       const book = new Book({
@@ -99,17 +111,29 @@ const resolvers = {
         published: published,
       });
 
-      await book.save();
+      try {
+        await book.save();
+      } catch (error) {
+        throw new UserInputError(error.message, {
+          invalidArgs: title,
+          genres,
+          published,
+        });
+      }
+
       return book;
     },
     editAuthor: async (root, args) => {
-      const author = await Author.findOne({ name: args.name });
-      if (!author) {
-        return null;
+      try {
+        const author = await Author.findOne({ name: args.name });
+        author.born = args.setBornTo;
+        await author.save();
+        return author;
+      } catch (error) {
+        throw new UserInputError(error.message, {
+          invalidArgs: args,
+        });
       }
-      author.born = args.setBornTo;
-      await author.save();
-      return author;
     },
   },
 };
