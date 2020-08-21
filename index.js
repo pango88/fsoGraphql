@@ -60,39 +60,31 @@ const resolvers = {
   Query: {
     authorCount: () => Author.collection.countDocuments(),
     bookCount: () => Book.collection.countDocuments(),
-    allBooks: (root, args) => {
+    allBooks: async (root, args) => {
       if (!args.author && !args.genre) {
         return Book.find({}).populate('author');
-      } /* parameters with author doesnt work*/ else if (
-        args.author &&
-        args.genre
-      ) {
-        return books
-          .filter((book) => book.author === args.author)
-          .filter((book) => book.genres.includes(args.genre));
+      } else if (args.author && args.genre) {
+        const author = await Author.findOne({ name: args.author });
+        return Book.find({
+          author: { $in: author._id },
+          genres: { $in: args.genre },
+        }).populate('author');
       } else if (args.author) {
-        return books.filter((book) => book.author === args.author);
-      } /* */
-      return Book.find({ genres: { $in: args.genre } });
-      //return books.filter((book) => book.genres.includes(args.genre));
+        const author = await Author.findOne({ name: args.author });
+        return Book.find({ author: { $in: author._id } }).populate('author');
+      }
+      return Book.find({ genres: { $in: args.genre } }).populate('author');
     },
     allAuthors: () => Author.find({}),
   },
   Author: {
-    bookCount: (root) => {
-      /* */ /*untouched */
-      const bookCount = books.reduce(
-        (acc, cur) => (acc += cur.author === root.name ? 1 : 0),
-        0
-      );
-      return bookCount;
-      /* */
+    bookCount: async (root) => {
+      const author = await Author.findOne({ name: root.name });
+      return Book.find({ author: author._id }).countDocuments();
     },
   },
   Mutation: {
     addBook: async (root, { title, author, genres, published }) => {
-      /* Issue with how author interacts with this */
-
       let authorid = await Author.findOne({ name: author });
       const existingAuthor = await Author.findOne({ name: author });
       if (!existingAuthor) {
@@ -109,7 +101,6 @@ const resolvers = {
 
       await book.save();
       return book;
-      /* */
     },
     editAuthor: async (root, args) => {
       const author = await Author.findOne({ name: args.name });
