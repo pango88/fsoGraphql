@@ -4,16 +4,14 @@ const {
   UserInputError,
   AuthenticationError,
 } = require('apollo-server');
+const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
+
 const Author = require('./models/author');
 const Book = require('./models/book');
 const User = require('./models/user');
-const mongoose = require('mongoose');
-const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = 'NEED_HERE_A_SECRET_KEY';
-
-mongoose.set('useFindAndModify', false);
-mongoose.set('useCreateIndex', true);
 
 const MONGODB_URI =
   'mongodb+srv://pango:pango@emaily-l3wzb.azure.mongodb.net/BooksNAuthors?retryWrites=true&w=majority';
@@ -23,6 +21,8 @@ mongoose
   .connect(MONGODB_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
+    useFindAndModify: false,
+    useCreateIndex: true,
   })
   .then(() => {
     console.log('connected to MongoDB');
