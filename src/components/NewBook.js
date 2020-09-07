@@ -10,6 +10,9 @@ const NewBook = (props) => {
   const [genres, setGenres] = useState([]);
 
   const [createBook] = useMutation(CREATE_BOOK, {
+    update: (store, response) => {
+      props.updateCacheWith(response.data.addBook);
+    },
     refetchQueries: [{ query: ALL_AUTHORS }, { query: ALL_BOOKS }],
   });
 
@@ -23,8 +26,6 @@ const NewBook = (props) => {
     createBook({
       variables: { title, author, published, genres },
     });
-
-    console.log('add book...');
 
     setTitle('');
     setPublished('');

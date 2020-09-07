@@ -1,11 +1,11 @@
-import { useQuery, useApolloClient } from '@apollo/client';
+import { useQuery, useApolloClient, useSubscription } from '@apollo/client';
 import React, { useState, useEffect } from 'react';
 import Authors from './components/Authors';
 import Books from './components/Books';
 import NewBook from './components/NewBook';
 import LoginForm from './components/LoginForm';
 import Recommended from './components/Recommended';
-import { ALL_BOOKS, ALL_AUTHORS, ME } from './queries';
+import { ALL_BOOKS, ALL_AUTHORS, ME, BOOK_ADDED } from './queries';
 
 const App = () => {
   const [page, setPage] = useState('authors');
@@ -15,12 +15,34 @@ const App = () => {
   const resultUser = useQuery(ME);
   const client = useApolloClient();
 
+  // Seems to work fine, however the id as seen in console is some kind of issue. Check in on this later
+  useSubscription(BOOK_ADDED, {
+    onSubscriptionData: ({ subscriptionData }) => {
+      const addedBook = subscriptionData.data.bookAdded;
+      window.alert(`${addedBook.title} added`);
+      updateCacheWith(addedBook);
+    },
+  });
+
   useEffect(() => {
     const loggedUserJSON = window.localStorage.getItem('books-user-token');
     if (loggedUserJSON) {
       setToken(loggedUserJSON);
     }
   }, [token]);
+
+  const updateCacheWith = (addedBook) => {
+    const includedIn = (set, object) =>
+      set.map((b) => b.id).includes(object.id);
+
+    const dataInStore = client.readQuery({ query: ALL_BOOKS });
+    if (!includedIn(dataInStore.allBooks, addedBook)) {
+      client.writeQuery({
+        query: ALL_BOOKS,
+        data: { allBooks: dataInStore.allBooks.concat(addedBook) },
+      });
+    }
+  };
 
   if (resultAuthors.loading || resultBooks.loading || resultUser.loading) {
     return <div>loading...</div>;
@@ -75,7 +97,7 @@ const App = () => {
 
       <Books show={page === 'books'} books={resultBooks.data.allBooks} />
 
-      <NewBook show={page === 'add'} />
+      <NewBook show={page === 'add'} updateCacheWith={updateCacheWith} />
       <Recommended
         show={page === 'recommended'}
         books={resultBooks.data.allBooks}
