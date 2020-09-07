@@ -1,7 +1,7 @@
 import React from 'react';
 import AuthorForm from './AuthorForm';
 
-const Authors = ({ show, authors }) => {
+const Authors = ({ show, authors, showAuthorForm }) => {
   if (!show) {
     return null;
   }
@@ -12,7 +12,7 @@ const Authors = ({ show, authors }) => {
       <table>
         <tbody>
           <tr>
-            <th></th>
+            <th>name</th>
             <th>born</th>
             <th>books</th>
           </tr>
@@ -25,7 +25,7 @@ const Authors = ({ show, authors }) => {
           ))}
         </tbody>
       </table>
-      <AuthorForm authors={authors} />
+      {showAuthorForm ? <AuthorForm authors={authors} /> : null}
     </div>
   );
 };
