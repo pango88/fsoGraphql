@@ -3,6 +3,7 @@ const {
   gql,
   UserInputError,
   AuthenticationError,
+  PubSub,
 } = require('apollo-server');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
@@ -12,6 +13,7 @@ const Book = require('./models/book');
 const User = require('./models/user');
 
 const JWT_SECRET = 'NEED_HERE_A_SECRET_KEY';
+const pubsub = new PubSub();
 
 const MONGODB_URI =
   'mongodb+srv://pango:pango@emaily-l3wzb.azure.mongodb.net/BooksNAuthors?retryWrites=true&w=majority';
@@ -75,6 +77,9 @@ const typeDefs = gql`
     editAuthor(name: String!, setBornTo: Int!): Author
     createUser(username: String!, favoriteGenre: String!): User
     login(username: String!, password: String!): Token
+  }
+  type Subscription {
+    bookAdded: Book!
   }
 `;
 
@@ -152,6 +157,8 @@ const resolvers = {
         });
       }
 
+      pubsub.publish('BOOK_ADDED', { bookAdded: book });
+
       return book;
     },
     editAuthor: async (root, args, context) => {
@@ -190,7 +197,13 @@ const resolvers = {
         username: user.username,
         id: user._id,
       };
+
       return { value: jwt.sign(userForToken, JWT_SECRET) };
+    },
+  },
+  Subscription: {
+    bookAdded: {
+      subscribe: () => pubsub.asyncIterator(['BOOK_ADDED']),
     },
   },
 };
@@ -200,14 +213,17 @@ const server = new ApolloServer({
   resolvers,
   context: async ({ req }) => {
     const auth = req ? req.headers.authorization : null;
-    if (auth && auth.toLowerCase().startsWith('bearer')) {
+    if (auth && auth.toLowerCase().startsWith('bearer ')) {
       const decodedToken = jwt.verify(auth.substring(7), JWT_SECRET);
+
       const currentUser = await User.findById(decodedToken.id);
+
       return { currentUser };
     }
   },
 });
 
-server.listen().then(({ url }) => {
+server.listen().then(({ url, subscriptionsUrl }) => {
   console.log(`Server ready at ${url}`);
+  console.log(`Server ready at ${subscriptionsUrl}`);
 });
