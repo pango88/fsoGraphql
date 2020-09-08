@@ -15,14 +15,7 @@ const App = () => {
   const resultUser = useQuery(ME);
   const client = useApolloClient();
 
-  // Seems to work fine, however the id as seen in console is some kind of issue. Check in on this later
-  useSubscription(BOOK_ADDED, {
-    onSubscriptionData: ({ subscriptionData }) => {
-      const addedBook = subscriptionData.data.bookAdded;
-      window.alert(`${addedBook.title} added`);
-      updateCacheWith(addedBook);
-    },
-  });
+  
 
   useEffect(() => {
     const loggedUserJSON = window.localStorage.getItem('books-user-token');
@@ -43,6 +36,14 @@ const App = () => {
       });
     }
   };
+  
+  useSubscription(BOOK_ADDED, {
+    onSubscriptionData: ({ subscriptionData }) => {
+      const addedBook = subscriptionData.data.bookAdded;
+      window.alert(`${addedBook.title} added`);
+      updateCacheWith(addedBook);
+    },
+  });
 
   if (resultAuthors.loading || resultBooks.loading || resultUser.loading) {
     return <div>loading...</div>;

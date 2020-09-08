@@ -37,6 +37,7 @@ export const CREATE_BOOK = gql`
       published: $published
       genres: $genres
     ) {
+      id
       title
       published
     }
@@ -84,8 +85,8 @@ export const BOOKS_BY_GENRE = gql`
 export const BOOK_ADDED = gql`
   subscription {
     bookAdded {
-      title
       id
+      title
       author {
         name
       }
