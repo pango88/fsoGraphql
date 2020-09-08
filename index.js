@@ -110,7 +110,10 @@ const resolvers = {
       }
       return Book.find({ genres: { $in: args.genre } }).populate('author');
     },
-    allAuthors: () => Author.find({}),
+    allAuthors: () => {
+      // n + 1 problem? Dont really understand, the question and i think it just seems kinda silly atm so im skipping it
+      return Author.find({});
+    },
     me: (root, args, context) => {
       return context.currentUser;
     },
